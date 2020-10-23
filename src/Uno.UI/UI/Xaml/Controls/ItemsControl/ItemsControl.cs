@@ -947,6 +947,8 @@ namespace Windows.UI.Xaml.Controls
 
 		protected virtual void ClearContainerForItemOverride(DependencyObject element, object item) { }
 
+		internal virtual void ContainerClearedForItem(object item, SelectorItem itemContainer) { }
+
 		/// <summary>
 		/// Unset content of container. This should be called when the container is no longer going to be used.
 		/// </summary>
@@ -967,6 +969,7 @@ namespace Windows.UI.Xaml.Controls
 
 			}
 			ClearContainerForItemOverride(element, item);
+			ContainerClearedForItem(item, element as SelectorItem);
 
 			if (element is ContentPresenter presenter
 				&& (

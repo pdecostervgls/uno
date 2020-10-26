@@ -23,6 +23,29 @@ namespace Windows.UI.Xaml.Controls
 
 		protected enum RelativeHeaderPlacement { Inline, Adjacent }
 
+		protected (double offset, double breadth, FrameworkElement element)? _pendingReorder;
+		internal void SetReorderedElement(Point location, FrameworkElement element, object item)
+		{
+			element.Opacity = 0;
+
+			_pendingReorder = Orientation == Orientation.Horizontal
+				? (location.X, element.ActualWidth, element)
+				: (location.Y, element.ActualHeight, element);
+
+			LightRefresh();
+		}
+
+		internal void ClearReorderedElement(FrameworkElement element, object item)
+		{
+			//if (_pendingReorderedElement == element)
+			//{
+			//	_pendingReorderedElement = null;
+			//}
+			element.Opacity = 1;
+			_pendingReorder = null;
+			LightRefresh();
+		}
+
 		/// <summary>
 		/// The direction of scroll.
 		/// </summary>

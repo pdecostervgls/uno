@@ -58,6 +58,8 @@ namespace Windows.UI.Xaml.Controls
 
 				_sectionEnd[group] = GetExtentEnd(frame);
 
+				// TODO: HERE: Add the space for the drop item
+
 				IncrementExtent(ref frame);
 				measuredBreadth = NMath.Max(measuredBreadth, GetBreadth(frame.Size));
 			}

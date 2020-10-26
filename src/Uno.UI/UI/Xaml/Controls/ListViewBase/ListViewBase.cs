@@ -656,7 +656,10 @@ namespace Windows.UI.Xaml.Controls
 			}
 		}
 
-		private const string DragItemsFormatId = DataPackage.UnoPrivateDataPrefix + "__dragged__items__";
+		private const string ReorderOwnerFormatId = DataPackage.UnoPrivateDataPrefix + "__list__view__base__source__";
+		private const string ReorderItemFormatId = DataPackage.UnoPrivateDataPrefix + "__list__view__base__source__item__";
+		private const string ReorderContainerFormatId = DataPackage.UnoPrivateDataPrefix + "__list__view__base__source__container__";
+		private const string DragItemsFormatId = DataPackage.UnoPrivateDataPrefix + "__list__view__base__items__";
 
 		internal override void ContainerPreparedForItem(object item, SelectorItem itemContainer, int itemIndex)
 		{
@@ -712,29 +715,98 @@ namespace Windows.UI.Xaml.Controls
 			if (ItemsControlFromItemContainer(sender) is ListViewBase that && that.CanDragItems)
 			{
 				var items = that.SelectedItems.ToList();
-				if (that.ItemFromContainer(sender) is {} draggedItem && !items.Contains(draggedItem))
+				var draggedItem = that.ItemFromContainer(sender);
+				if (draggedItem is { } && !items.Contains(draggedItem))
 				{
 					items.Add(draggedItem);
 				}
+
 				var args = new DragItemsStartingEventArgs(innerArgs, items);
 
 				that.DragItemsStarting?.Invoke(that, args);
 
 				// The application has the ability to add some items in the list, so make sure to freeze it only after event has been raised.
 				args.Data.SetData(DragItemsFormatId, args.Items.ToList());
+
+				// The ListView must have both CanReorderItems and AllowDrop flags set to allow re-ordering (UWP)
+				// We also do not allow re-ordering if we where not able to find the item (as it has to be hidden in the view) (Uno only)
+				if (that.CanReorderItems && that.AllowDrop && draggedItem is {})
+				{
+					args.Data.SetData(ReorderOwnerFormatId, that);
+					args.Data.SetData(ReorderItemFormatId, draggedItem);
+					args.Data.SetData(ReorderContainerFormatId, sender);
+
+					that.DragEnter += OnReorderUpdated;
+					that.DragOver += OnReorderUpdated;
+					that.DragLeave += OnReorderCompleted;
+					that.Drop += OnReorderCompleted;
+				}
 			}
 		}
+
+		private static void OnReorderUpdated(object sender, DragEventArgs dragEventArgs)
+		{
+			var that = sender as ListView;
+			var src = dragEventArgs.DataView.FindRawData(ReorderOwnerFormatId) as ListView;
+			var item = dragEventArgs.DataView.FindRawData(ReorderItemFormatId);
+			var container = dragEventArgs.DataView.FindRawData(ReorderContainerFormatId) as FrameworkElement; // TODO: This might have changed/been recycled if scrolled 
+			if (that is null || src is null || item is null || container is null || src != that)
+			{
+				dragEventArgs.Log().Warn("Invalid reorder event.");
+
+				return;
+			}
+
+			that.PrepareReordering(dragEventArgs.GetPosition(that), container, item);
+		}
+
+		private static void OnReorderCompleted(object sender, DragEventArgs dragEventArgs)
+		{
+			var that = sender as ListView;
+			var src = dragEventArgs.DataView.FindRawData(ReorderOwnerFormatId) as ListView;
+			var item = dragEventArgs.DataView.FindRawData(ReorderItemFormatId);
+			var container = dragEventArgs.DataView.FindRawData(ReorderContainerFormatId) as FrameworkElement; // TODO: This might have changed/been recycled if scrolled 
+			if (that is null || src is null || item is null || container is null || src != that)
+			{
+				dragEventArgs.Log().Warn("Invalid reorder event.");
+
+				return;
+			}
+
+			that.CompleteReordering(container, item);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="location">The current location of the pointer use to reordering items, in the ListView coordinates space</param>
+		/// <param name="draggedContainer">The container that has been clicked to initiate the reordering (i.e. drag) operation (cf. remarks)</param>
+		/// <param name="draggedItem">The item that has been clicked to initiate the reordering (i.e. drag) operation (cf. remarks)</param>
+		/// <remarks>
+		/// If the SelectionMode is not None or Single, the draggedItem/Container might not be the single that is being reordered.
+		/// However, UWP hides in the ListView only the item that is being clicked by the user to initiate the reorder / drag operation.
+		/// </remarks>
+		partial void PrepareReordering(Point location, FrameworkElement draggedContainer, object draggedItem);
+		partial void CompleteReordering(FrameworkElement draggedContainer, object draggedItem);
 
 		private static void OnItemContainerDragCompleted(UIElement sender, DropCompletedEventArgs innerArgs)
 		{
 			// Note: It's not the responsibility of the ListView to remove item from the source, not matter the AcceptedOperation.
 
-			if (ItemsControlFromItemContainer(sender) is ListViewBase that && that.CanDragItems)
+			if (ItemsControlFromItemContainer(sender) is ListViewBase that)
 			{
-				var items = innerArgs.Info.Data.FindRawData(DragItemsFormatId) as IReadOnlyList<object> ?? new List<object>(0);
-				var args = new DragItemsCompletedEventArgs(innerArgs, items);
+				if (that.CanDragItems)
+				{
+					var items = innerArgs.Info.Data.FindRawData(DragItemsFormatId) as IReadOnlyList<object> ?? new List<object>(0);
+					var args = new DragItemsCompletedEventArgs(innerArgs, items);
 
-				that.DragItemsCompleted?.Invoke(that, args);
+					that.DragItemsCompleted?.Invoke(that, args);
+				}
+
+				that.DragEnter -= OnReorderUpdated;
+				that.DragOver -= OnReorderUpdated;
+				that.DragLeave -= OnReorderCompleted;
+				that.Drop -= OnReorderCompleted;
 			}
 		}
 

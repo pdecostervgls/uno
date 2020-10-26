@@ -1181,6 +1181,11 @@ namespace Windows.UI.Xaml.Controls
 				_areHeaderAndFooterCreated = true;
 			}
 
+			if (DropLocation.HasValue && currentLocation > DropLocation.Value)
+			{
+				height += dropPlaceHodlerSize;
+			}
+
 			AssertValidState();
 
 			if (!_isInitialPaddingExtentOffsetApplied)
@@ -1847,6 +1852,9 @@ namespace Windows.UI.Xaml.Controls
 					group.Start + group.ItemsExtentOffset :
 					group.End;
 			}
+
+			// TODO: Add the drop place holder here
+
 			var view = GetLeadingItemView(fillDirection);
 			return fillDirection == GeneratorDirection.Forward ?
 				GetChildStartWithMargin(view) + leadingLine.Extent :

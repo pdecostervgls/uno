@@ -3,6 +3,7 @@
 #pragma warning disable 114 // new keyword hiding
 using System;
 using System.Collections.Generic;
+using Windows.Foundation;
 using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
 
@@ -72,6 +73,16 @@ namespace Windows.UI.Xaml.Controls
 		private void TryLoadMoreItems()
 		{
 			//TODO: ISupportIncrementalLoading
+		}
+
+		partial void PrepareReordering(Point location, FrameworkElement draggedContainer, object draggedItem)
+		{
+			VirtualizingPanel?.GetLayouter().SetReorderedElement(location, draggedContainer, draggedItem);
+		}
+
+		partial void CompleteReordering(FrameworkElement draggedContainer, object draggedItem)
+		{
+			VirtualizingPanel?.GetLayouter().ClearReorderedElement(draggedContainer, draggedItem);
 		}
 	}
 }

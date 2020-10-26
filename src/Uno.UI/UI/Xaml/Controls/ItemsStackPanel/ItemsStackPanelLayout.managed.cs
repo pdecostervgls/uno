@@ -22,6 +22,20 @@ namespace Windows.UI.Xaml.Controls
 			var item = GetFlatItemIndex(nextVisibleItem);
 			var view = Generator.DequeueViewForItem(item);
 
+			if (_pendingReorder is { } reorder)
+			{
+				if (view == reorder.element)
+				{
+					return null;
+				}
+
+				var halfLine = _averageLineHeight / 2;
+				if (reorder.offset > extentOffset - halfLine && reorder.offset < extentOffset + halfLine)
+				{
+					extentOffset += reorder.breadth;
+				}
+			}
+
 			AddView(view, fillDirection, extentOffset, 0);
 
 			return new Line(new[] { view }, nextVisibleItem, nextVisibleItem, item);

@@ -938,6 +938,8 @@ namespace Windows.UI.Xaml.Controls
 			}
 		}
 
+		// HERE
+
 		public override void InvalidateLayout()
 		{
 			//Called in response to INotifyCollectionChanged operation, update layout reusing already-calculated databound element sizes

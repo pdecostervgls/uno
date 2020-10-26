@@ -52,7 +52,7 @@ namespace Windows.UI.Xaml.Controls
 		/// <summary>
 		/// The current average line height based on materialized lines. Used to estimate scroll extent of unmaterialized items.
 		/// </summary>
-		private double _averageLineHeight;
+		protected double _averageLineHeight;
 
 		/// <summary>
 		/// The previous item to the old first visible item, used when a lightweight layout rebuild is called.
@@ -724,8 +724,12 @@ namespace Windows.UI.Xaml.Controls
 		private void AddLine(GeneratorDirection fillDirection, Uno.UI.IndexPath nextVisibleItem)
 		{
 			var extentOffset = fillDirection == Backward ? GetContentStart() : GetContentEnd();
-
 			var line = CreateLine(fillDirection, extentOffset, AvailableBreadth, nextVisibleItem);
+
+			if (line is null)
+			{
+				return;
+			}
 
 			if (fillDirection == Backward)
 			{

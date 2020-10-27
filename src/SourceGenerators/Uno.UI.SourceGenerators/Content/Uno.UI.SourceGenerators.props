@@ -17,6 +17,9 @@
 	<XamarinProjectType Condition="'$(UnoRuntimeIdentifier)'=='WebAssembly'">wasm</XamarinProjectType>
 	<XamarinProjectType Condition="'$(UnoRuntimeIdentifier)'=='Skia'">skia</XamarinProjectType>
 	<XamarinProjectType Condition="'$(TargetFramework)'=='net461'">net461</XamarinProjectType>
+	<!-- Setting this to true ensures that the AssignLinkMetadata task is executed (required to set ResourceDictionary.Source paths correctly),
+		which might otherwise not be the case for some non-standard import orderings in the head project. -->
+	<SynthesizeLinkMetadata>true</SynthesizeLinkMetadata>
   </PropertyGroup>
 
   <Choose>

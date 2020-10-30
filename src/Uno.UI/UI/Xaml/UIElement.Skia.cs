@@ -13,6 +13,7 @@ using Uno.Extensions;
 using Uno.Logging;
 using Uno.UI;
 using Uno.UI.Extensions;
+using Windows.UI.Xaml.Controls.Primitives;
 
 namespace Windows.UI.Xaml
 {
@@ -196,7 +197,7 @@ namespace Windows.UI.Xaml
 
 			if (newVisibility == Visibility.Collapsed)
 			{
-				_desiredSize = new Size(0, 0);
+				LayoutInformation.SetDesiredSize(this, new Size(0, 0));
 				_size = new Size(0, 0);
 			}
 		}

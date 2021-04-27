@@ -19,15 +19,28 @@ namespace Windows.ApplicationModel.Resources.Core
 		{
 			try
 			{
-				ValidatePlatform(resourceCandidate);
-				
-				var language = GetLanguage(resourceCandidate);
-				var directory = Path.GetDirectoryName(resourceCandidate.LogicalPath);
-				var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(resourceCandidate.LogicalPath);
-				var scale = GetScale(resourceCandidate);
-				var extension = Path.GetExtension(resourceCandidate.LogicalPath).ToLowerInvariant();
+				if (IsImageAsset(resourceCandidate.LogicalPath))
+				{
+					ValidatePlatform(resourceCandidate);
 
-				return Path.Combine(language, directory, $"{fileNameWithoutExtension}{scale}{extension}");
+					var language = GetLanguage(resourceCandidate);
+					var directory = Path.GetDirectoryName(resourceCandidate.LogicalPath);
+					var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(resourceCandidate.LogicalPath);
+					var scale = GetScale(resourceCandidate);
+					var extension = Path.GetExtension(resourceCandidate.LogicalPath).ToLowerInvariant();
+
+					return Path.Combine(language, directory, $"{fileNameWithoutExtension}{scale}{extension}");
+				}
+				else if (IsFontAsset(resourceCandidate.LogicalPath))
+				{
+					var directory = Path.GetDirectoryName(resourceCandidate.LogicalPath);
+					string path = Path.Combine(directory, Path.GetFileName(resourceCandidate.LogicalPath));
+					return path;
+				}
+				else
+				{
+					throw new Exception("Unsupported asset type");
+				}
 			}
 #if HAS_UNO
 			catch (Exception ex)
@@ -84,6 +97,24 @@ namespace Windows.ApplicationModel.Resources.Core
 				default:
 					throw new NotSupportedException($"Scale qualifier of value {scale} is not supported on iOS.");
 			}
+		}
+
+		private static bool IsImageAsset(string path)
+		{
+			var extension = Path.GetExtension(path).ToLowerInvariant();
+			return extension == ".png"
+				|| extension == ".jpg"
+				|| extension == ".jpeg"
+				|| extension == ".gif";
+		}
+
+		private static bool IsFontAsset(string path)
+		{
+			var extension = Path.GetExtension(path).ToLowerInvariant();
+			return extension == ".ttf"
+				|| extension == ".eot"
+				|| extension == ".woff"
+				|| extension == ".woff2";
 		}
 	}
 }

@@ -72,4 +72,7 @@
       <DependentUpon>HttpUnitTests.xaml</DependentUpon>
     </Compile>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)Assets\Fonts\uno-fluentui-assets.ttf" />
+  </ItemGroup>
 </Project>

@@ -71,6 +71,7 @@
     </ItemGroup>
 	<ItemGroup Condition="'$(XamarinProjectType)'=='ios'">
 	  <BundleResource Condition="'%(RetargetedAssets.AssetType)' == 'image'" Include="@(RetargetedAssets)" />
+      <BundleResource Condition="'%(RetargetedAssets.AssetType)' == 'font'" Include="@(RetargetedAssets)" />
 	  <BundleResource Condition="'%(RetargetedAssets.AssetType)' == 'generic'" Include="@(RetargetedAssets)" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(XamarinProjectType)'=='android'">

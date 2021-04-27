@@ -25,14 +25,26 @@ namespace Windows.ApplicationModel.Resources.Core
 		{
 			try
 			{
-				ValidatePlatform(resourceCandidate);
+				if (IsImageAsset(resourceCandidate.LogicalPath))
+				{
+					ValidatePlatform(resourceCandidate);
+					var language = GetLanguage(resourceCandidate.GetQualifierValue("language"), defaultLanguage);
+					var dpi = GetDpi(resourceCandidate.GetQualifierValue("scale"));
+					var theme = GetTheme(resourceCandidate.GetQualifierValue("theme"));
+					var fileName = AndroidResourceNameEncoder.Encode(Path.GetFileNameWithoutExtension(resourceCandidate.LogicalPath)) + Path.GetExtension(resourceCandidate.LogicalPath);
 
-				var language = GetLanguage(resourceCandidate.GetQualifierValue("language"), defaultLanguage);
-				var dpi = GetDpi(resourceCandidate.GetQualifierValue("scale"));
-				var theme = GetTheme(resourceCandidate.GetQualifierValue("theme"));
-				var fileName = AndroidResourceNameEncoder.Encode(Path.GetFileNameWithoutExtension(resourceCandidate.LogicalPath)) + Path.GetExtension(resourceCandidate.LogicalPath);
-				
-				return Path.Combine($"drawable{language}{theme}{dpi}", fileName);
+					return Path.Combine($"drawable{language}{theme}{dpi}", fileName);
+				}
+				else if (IsFontAsset(resourceCandidate.LogicalPath))
+				{
+					var directory = Path.GetDirectoryName(resourceCandidate.LogicalPath);
+					string path = Path.Combine(directory, Path.GetFileName(resourceCandidate.LogicalPath));
+					return path;
+				}
+				else
+				{
+					throw new Exception("Unsupported asset type");
+				}
 			}
 #if HAS_UNO
 			catch (Exception ex)
@@ -102,6 +114,24 @@ namespace Windows.ApplicationModel.Resources.Core
 				default: throw new NotSupportedException($"Theme {theme} is not supported on Android");
 
 			}
+		}
+
+		private static bool IsImageAsset(string path)
+		{
+			var extension = Path.GetExtension(path).ToLowerInvariant();
+			return extension == ".png"
+				|| extension == ".jpg"
+				|| extension == ".jpeg"
+				|| extension == ".gif";
+		}
+
+		private static bool IsFontAsset(string path)
+		{
+			var extension = Path.GetExtension(path).ToLowerInvariant();
+			return extension == ".ttf"
+				|| extension == ".eot"
+				|| extension == ".woff"
+				|| extension == ".woff2";
 		}
 	}
 }

@@ -76,6 +76,7 @@
 	</ItemGroup>
 	<ItemGroup Condition="'$(XamarinProjectType)'=='android'">
 	  <AndroidResource Condition="'%(RetargetedAssets.AssetType)' =='image'" Include="@(RetargetedAssets)" />
+      <AndroidAsset Condition="'%(RetargetedAssets.AssetType)' == 'font'" Include="@(RetargetedAssets)" />
 	  <AndroidAsset Condition="'%(RetargetedAssets.AssetType)' =='generic'" Include="@(RetargetedAssets)" />
 	</ItemGroup>
   </Target>

@@ -158,11 +158,7 @@ namespace Uno.UI
 			/// See https://github.com/unoplatform/uno/issues/4730 for details.
 			/// </remarks>
 			public static bool IsStoreHardReferenceEnabled { get; set; }
-#if __WASM__
-				= false;
-#else
 				= true;
-#endif
 		}
 
 		public static class Font
@@ -394,6 +390,14 @@ namespace Uno.UI
 			/// referencing the ** type ** ScrollViewer in any way.
 			/// </remarks>
 			public static ScrollViewerUpdatesMode DefaultUpdatesMode { get; set; } = ScrollViewerUpdatesMode.AsynchronousIdle;
+
+			/// <summary>
+			/// Defines the delay after which the scrollbars hide themselves when pointer is not over.<br/>
+			/// Default is 4 sec.<br/>
+			/// Setting this to <see cref="TimeSpan.MaxValue"/> will completely disable the auto hide feature.
+			/// </summary>
+			/// <remarks>This is effective only for managed scrollbars (WASM, macOS and Skia for now)</remarks>
+			public static TimeSpan? DefaultAutoHideDelay { get; set; }
 
 #if __ANDROID__
 			/// <summary>

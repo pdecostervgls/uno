@@ -64,8 +64,9 @@ $(function () {
   // Enable anchors for headings.
   (function () {
     anchors.options = {
-      placement: 'left',
-      visible: 'touch'
+      placement: 'right',
+      visible: 'touch',
+      icon: '#'
     };
     anchors.add('article h2:not(.no-anchor), article h3:not(.no-anchor), article h4:not(.no-anchor)');
   })();
@@ -532,6 +533,10 @@ $(function () {
           scrollspy.activate(target);
         }
       });
+      var contributionDiv = $('.contribution').get(0).outerHTML;
+      $('.contribution').remove();
+      $('.sideaffix').append(contributionDiv);
+
     }
 
     function getHierarchy() {
@@ -1113,5 +1118,9 @@ $(function () {
     // Exclude tabbed content case
     $('a:not([data-tab])').click(delegateAnchors);
     scrollToCurrent();
+
+    $(document).ready(function(){
+      $('body').scrollspy({ offset: 150});
+    });
   }
 });

@@ -577,6 +577,27 @@ var Uno;
                 this.getView(elementId).setAttribute("xuid", name);
             }
             /**
+                * Sets the visibility of the specified element
+                */
+            setVisibility(elementId, visible) {
+                this.setVisibilityInternal(elementId, visible);
+                return "ok";
+            }
+            setVisibilityNative(pParam) {
+                const params = WindowManagerSetVisibilityParams.unmarshal(pParam);
+                this.setVisibilityInternal(params.HtmlId, params.Visible);
+                return true;
+            }
+            setVisibilityInternal(elementId, visible) {
+                const element = this.getView(elementId);
+                if (visible) {
+                    element.classList.remove(WindowManager.unoCollapsedClassName);
+                }
+                else {
+                    element.classList.add(WindowManager.unoCollapsedClassName);
+                }
+            }
+            /**
                 * Set an attribute for an element.
                 */
             setAttributes(elementId, attributes) {
@@ -830,6 +851,56 @@ var Uno;
                 }
             }
             /**
+            * Sets the color property of the specified element
+            */
+            setElementColor(elementId, color) {
+                this.setElementColorInternal(elementId, color);
+                return "ok";
+            }
+            setElementColorNative(pParam) {
+                const params = WindowManagerSetElementColorParams.unmarshal(pParam);
+                this.setElementColorInternal(params.HtmlId, params.Color);
+                return true;
+            }
+            setElementColorInternal(elementId, color) {
+                const element = this.getView(elementId);
+                element.style.setProperty("color", this.numberToCssColor(color));
+            }
+            /**
+            * Sets the background color property of the specified element
+            */
+            setElementBackgroundColor(pParam) {
+                const params = WindowManagerSetElementBackgroundColorParams.unmarshal(pParam);
+                const element = this.getView(params.HtmlId);
+                const style = element.style;
+                style.setProperty("background-color", this.numberToCssColor(params.Color));
+                style.removeProperty("background-image");
+                return true;
+            }
+            /**
+            * Sets the background image property of the specified element
+            */
+            setElementBackgroundGradient(pParam) {
+                const params = WindowManagerSetElementBackgroundGradientParams.unmarshal(pParam);
+                const element = this.getView(params.HtmlId);
+                const style = element.style;
+                style.removeProperty("background-color");
+                style.setProperty("background-image", params.CssGradient);
+                return true;
+            }
+            /**
+            * Clears the background property of the specified element
+            */
+            resetElementBackground(pParam) {
+                const params = WindowManagerResetElementBackgroundParams.unmarshal(pParam);
+                const element = this.getView(params.HtmlId);
+                const style = element.style;
+                style.removeProperty("background-color");
+                style.removeProperty("background-image");
+                style.removeProperty("background-size");
+                return true;
+            }
+            /**
             * Sets the transform matrix of an element
             *
             */
@@ -1029,6 +1100,7 @@ var Uno;
                     var handled = this.dispatchEvent(element, eventName, eventPayload);
                     if (handled) {
                         event.stopPropagation();
+                        event.preventDefault();
                     }
                 };
                 element.addEventListener(eventName, eventHandler, onCapturePhase);
@@ -1776,6 +1848,9 @@ var Uno;
                 // Fastest conversion as of 2020-03-25 (when compared to String(handle) or handle.toString())
                 return handle + "";
             }
+            numberToCssColor(color) {
+                return "#" + color.toString(16).padStart(8, '0');
+            }
             setCursor(cssCursor) {
                 const unoBody = document.getElementById(this.containerElementId);
                 if (unoBody) {
@@ -1819,6 +1894,7 @@ var Uno;
         WindowManager._isLoadEventsEnabled = false;
         WindowManager.unoRootClassName = "uno-root-element";
         WindowManager.unoUnarrangedClassName = "uno-unarranged";
+        WindowManager.unoCollapsedClassName = "uno-visibility-collapsed";
         WindowManager._cctor = (() => {
             WindowManager.initMethods();
             UI.HtmlDom.initPolyfills();
@@ -3953,12 +4029,32 @@ var Windows;
                     return null;
                 }
                 static observeSystemTheme() {
-                    if (!this.dispatchThemeChange) {
-                        this.dispatchThemeChange = Module.mono_bind_static_method("[Uno.UI] Windows.UI.Xaml.Application:DispatchSystemThemeChange");
+                    if (!Application.dispatchThemeChange) {
+                        Application.dispatchThemeChange = Module.mono_bind_static_method("[Uno.UI] Windows.UI.Xaml.Application:DispatchSystemThemeChange");
                     }
                     if (window.matchMedia) {
                         window.matchMedia('(prefers-color-scheme: dark)').addEventListener("change", () => {
                             Application.dispatchThemeChange();
+                        });
+                    }
+                }
+                static observeVisibility() {
+                    if (!Application.dispatchVisibilityChange) {
+                        Application.dispatchVisibilityChange = Module.mono_bind_static_method("[Uno.UI] Windows.UI.Xaml.Application:DispatchVisibilityChange");
+                    }
+                    if (document.onvisibilitychange !== undefined) {
+                        document.addEventListener("visibilitychange", () => {
+                            Application.dispatchVisibilityChange(document.visibilityState == "visible");
+                        });
+                    }
+                    if (window.onpagehide !== undefined) {
+                        window.addEventListener("pagehide", () => {
+                            Application.dispatchVisibilityChange(false);
+                        });
+                    }
+                    if (window.onpageshow !== undefined) {
+                        window.addEventListener("pageshow", () => {
+                            Application.dispatchVisibilityChange(true);
                         });
                     }
                 }
@@ -4615,6 +4711,16 @@ class WindowManagerRemoveViewParams {
     }
 }
 /* TSBindingsGenerator Generated code -- this code is regenerated on each build */
+class WindowManagerResetElementBackgroundParams {
+    static unmarshal(pData) {
+        const ret = new WindowManagerResetElementBackgroundParams();
+        {
+            ret.HtmlId = Number(Module.getValue(pData + 0, "*"));
+        }
+        return ret;
+    }
+}
+/* TSBindingsGenerator Generated code -- this code is regenerated on each build */
 class WindowManagerResetStyleParams {
     static unmarshal(pData) {
         const ret = new WindowManagerResetStyleParams();
@@ -4778,6 +4884,51 @@ class WindowManagerSetContentHtmlParams {
             else {
                 ret.Html = null;
             }
+        }
+        return ret;
+    }
+}
+/* TSBindingsGenerator Generated code -- this code is regenerated on each build */
+class WindowManagerSetElementBackgroundColorParams {
+    static unmarshal(pData) {
+        const ret = new WindowManagerSetElementBackgroundColorParams();
+        {
+            ret.HtmlId = Number(Module.getValue(pData + 0, "*"));
+        }
+        {
+            ret.Color = Module.HEAPU32[(pData + 4) >> 2];
+        }
+        return ret;
+    }
+}
+/* TSBindingsGenerator Generated code -- this code is regenerated on each build */
+class WindowManagerSetElementBackgroundGradientParams {
+    static unmarshal(pData) {
+        const ret = new WindowManagerSetElementBackgroundGradientParams();
+        {
+            ret.HtmlId = Number(Module.getValue(pData + 0, "*"));
+        }
+        {
+            const ptr = Module.getValue(pData + 4, "*");
+            if (ptr !== 0) {
+                ret.CssGradient = String(Module.UTF8ToString(ptr));
+            }
+            else {
+                ret.CssGradient = null;
+            }
+        }
+        return ret;
+    }
+}
+/* TSBindingsGenerator Generated code -- this code is regenerated on each build */
+class WindowManagerSetElementColorParams {
+    static unmarshal(pData) {
+        const ret = new WindowManagerSetElementColorParams();
+        {
+            ret.HtmlId = Number(Module.getValue(pData + 0, "*"));
+        }
+        {
+            ret.Color = Module.HEAPU32[(pData + 4) >> 2];
         }
         return ret;
     }
@@ -4996,6 +5147,19 @@ class WindowManagerSetUnsetClassesParams {
             else {
                 ret.CssClassesToUnset = null;
             }
+        }
+        return ret;
+    }
+}
+/* TSBindingsGenerator Generated code -- this code is regenerated on each build */
+class WindowManagerSetVisibilityParams {
+    static unmarshal(pData) {
+        const ret = new WindowManagerSetVisibilityParams();
+        {
+            ret.HtmlId = Number(Module.getValue(pData + 0, "*"));
+        }
+        {
+            ret.Visible = Boolean(Module.getValue(pData + 4, "i32"));
         }
         return ret;
     }

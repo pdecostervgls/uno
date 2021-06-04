@@ -135,7 +135,21 @@ namespace Windows.UI.Xaml
 #if __ANDROID__
 		new
 #endif
-		DependencyObject Parent => ((IDependencyObjectStoreProvider)this).Store.Parent as DependencyObject;
+		DependencyObject Parent =>
+#if UNO_HAS_MANAGED_POINTERS || __WASM__
+			LogicalParentOverride ??
+#endif
+			((IDependencyObjectStoreProvider)this).Store.Parent as DependencyObject;
+
+
+#if UNO_HAS_MANAGED_POINTERS || __WASM__
+		/// <summary>
+		/// Allows to override the publicly-visible <see cref="Parent"/> without modifying DP propagation.
+		/// </summary>
+		internal DependencyObject LogicalParentOverride { get; set; }
+
+		internal UIElement VisualParent => ((IDependencyObjectStoreProvider)this).Store.Parent as UIElement;
+#endif
 
 		private bool _isParsing;
 		/// <summary>
@@ -511,7 +525,7 @@ namespace Windows.UI.Xaml
 			ResourceResolver.ApplyResource(this, FocusVisualSecondaryBrushProperty, new SpecializedResourceDictionary.ResourceKey("SystemControlFocusVisualSecondaryBrush"), false, null, DependencyPropertyValuePrecedences.DefaultValue);
 
 			_focusVisualBrushesInitialized = true;
-		}		
+		}
 
 		/// <summary>
 		/// Replace previous style with new style, at nominated precedence. This method is called separately for the user-determined
@@ -540,6 +554,7 @@ namespace Windows.UI.Xaml
 				return;
 			}
 			_defaultStyleApplied = true;
+			((IDependencyObjectStoreProvider)this).Store.SetLastUsedTheme(Application.Current?.RequestedThemeForResources);
 
 			var style = Style.GetDefaultStyleForType(GetDefaultStyleKey());
 
@@ -561,6 +576,51 @@ namespace Windows.UI.Xaml
 		{
 			_constraintsChanged = true;
 		}
+
+		#region IsEnabled DependencyProperty
+
+#if !(__ANDROID__ || __IOS__ || __MACOS__) // On those platforms, this code is generated through mixins
+		// Note: we keep the event args as a private field for perf consideration: This avoids to create a new instance each time.
+		//		 As it's used only internally it's safe to do so.
+		[ThreadStatic]
+		private static IsEnabledChangedEventArgs _isEnabledChangedEventArgs;
+
+		public event DependencyPropertyChangedEventHandler IsEnabledChanged;
+
+		[GeneratedDependencyProperty(DefaultValue = true, ChangedCallback = true, CoerceCallback = true, Options = FrameworkPropertyMetadataOptions.Inherits)]
+		public static DependencyProperty IsEnabledProperty { get; } = CreateIsEnabledProperty();
+
+		public bool IsEnabled
+		{
+			get => GetIsEnabledValue();
+			set => SetIsEnabledValue(value);
+		}
+
+		private void OnIsEnabledChanged(DependencyPropertyChangedEventArgs args)
+		{
+			UpdateHitTest();
+
+			_isEnabledChangedEventArgs ??= new IsEnabledChangedEventArgs();
+			_isEnabledChangedEventArgs.SourceEvent = args;
+
+			OnIsEnabledChanged(_isEnabledChangedEventArgs);
+			IsEnabledChanged?.Invoke(this, args);
+
+			// TODO: move focus elsewhere if control.FocusState != FocusState.Unfocused
+
+#if __WASM__
+			if (FeatureConfiguration.UIElement.AssignDOMXamlProperties)
+			{
+				UpdateDOMProperties();
+			}
+#endif
+		}
+#endif
+
+		private protected virtual void OnIsEnabledChanged(IsEnabledChangedEventArgs pArgs)
+		{
+		}
+		#endregion
 
 		/// <summary>
 		/// Provides the ability to disable <see cref="IsEnabled"/> value changes, e.g. in the context of ICommand CanExecute.
@@ -781,7 +841,7 @@ namespace Windows.UI.Xaml
 								: SolidColorBrushHelper.White, DependencyPropertyValuePrecedences.DefaultValue);
 		}
 
-		#region AutomationPeer
+#region AutomationPeer
 #if !__IOS__ && !__ANDROID__ && !__MACOS__ // This code is generated in FrameworkElementMixins
 		private AutomationPeer _automationPeer;
 
@@ -832,7 +892,7 @@ namespace Windows.UI.Xaml
 		}
 #endif
 
-		#endregion
+#endregion
 
 #if !UNO_REFERENCE_API
 		private class FrameworkElementLayouter : Layouter

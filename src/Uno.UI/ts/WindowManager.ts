@@ -28,6 +28,7 @@ namespace Uno.UI {
 
 		private static readonly unoRootClassName = "uno-root-element";
 		private static readonly unoUnarrangedClassName = "uno-unarranged";
+		private static readonly unoCollapsedClassName = "uno-visibility-collapsed";
 
 		private static _cctor = (() => {
 			WindowManager.initMethods();
@@ -365,6 +366,31 @@ namespace Uno.UI {
 		}
 
 		/**
+			* Sets the visibility of the specified element
+			*/
+		public setVisibility(elementId: number, visible: boolean): string {
+			this.setVisibilityInternal(elementId, visible);
+			return "ok";
+		}
+
+		public setVisibilityNative(pParam: number): boolean {
+			const params = WindowManagerSetVisibilityParams.unmarshal(pParam);
+			this.setVisibilityInternal(params.HtmlId, params.Visible);
+			return true;
+		}
+
+		private setVisibilityInternal(elementId: number, visible: boolean): void {
+			const element = this.getView(elementId);
+
+			if (visible) {
+				element.classList.remove(WindowManager.unoCollapsedClassName);
+			}
+			else {
+				element.classList.add(WindowManager.unoCollapsedClassName);
+			}
+		}
+
+		/**
 			* Set an attribute for an element.
 			*/
 		public setAttributes(elementId: number, attributes: { [name: string]: string }): string {
@@ -680,6 +706,72 @@ namespace Uno.UI {
 		}
 
 		/**
+		* Sets the color property of the specified element
+		*/
+		public setElementColor(elementId: number, color: number): string {
+			this.setElementColorInternal(elementId, color);
+			return "ok";
+		}
+
+		public setElementColorNative(pParam: number): boolean {
+			const params = WindowManagerSetElementColorParams.unmarshal(pParam);
+			this.setElementColorInternal(params.HtmlId, params.Color);
+			return true;
+		}
+
+		private setElementColorInternal(elementId: number, color: number): void {
+			const element = this.getView(elementId);
+
+			element.style.setProperty("color", this.numberToCssColor(color));
+		}
+
+		/**
+		* Sets the background color property of the specified element
+		*/
+		public setElementBackgroundColor(pParam: number): boolean {
+			const params = WindowManagerSetElementBackgroundColorParams.unmarshal(pParam);
+
+			const element = this.getView(params.HtmlId);
+			const style = element.style;
+
+			style.setProperty("background-color", this.numberToCssColor(params.Color));
+			style.removeProperty("background-image");
+
+			return true;
+		}
+
+		/**
+		* Sets the background image property of the specified element
+		*/
+		public setElementBackgroundGradient(pParam: number): boolean {
+			const params = WindowManagerSetElementBackgroundGradientParams.unmarshal(pParam);
+
+			const element = this.getView(params.HtmlId);
+			const style = element.style;
+
+			style.removeProperty("background-color");
+			style.setProperty("background-image", params.CssGradient);
+
+			return true;
+		}
+
+		/**
+		* Clears the background property of the specified element
+		*/
+		public resetElementBackground(pParam: number): boolean {
+			const params = WindowManagerResetElementBackgroundParams.unmarshal(pParam);
+
+			const element = this.getView(params.HtmlId);
+			const style = element.style;
+
+			style.removeProperty("background-color");
+			style.removeProperty("background-image");
+			style.removeProperty("background-size");
+
+			return true;
+		}
+
+		/**
 		* Sets the transform matrix of an element
 		*
 		*/
@@ -803,6 +895,9 @@ namespace Uno.UI {
 			const handled = WindowManager.current.dispatchEvent(element, evt.type, payload);
 			if (handled) {
 				evt.stopPropagation();
+				// Not calling preventDefault() here, as that will break native focus dispatch for pointerdown
+				// If needed, we may add preventDefault() for some specific event type later, but it is not needed
+				// for any scenario yet.
 			}
 		}
 
@@ -936,6 +1031,7 @@ namespace Uno.UI {
 				var handled = this.dispatchEvent(element, eventName, eventPayload);
 				if (handled) {
 					event.stopPropagation();
+					event.preventDefault();
 				}
 			};
 
@@ -1883,6 +1979,10 @@ namespace Uno.UI {
 			return handle + "";
 		}
 
+		private numberToCssColor(color: number): string {
+			return "#" + color.toString(16).padStart(8, '0');
+		}
+
 		public setCursor(cssCursor: string): string {
 			const unoBody = document.getElementById(this.containerElementId);
 
@@ -1937,7 +2037,7 @@ namespace Uno.UI {
 
 	if (typeof define === "function") {
 		define(
-			[`${config.uno_app_base}/AppManifest`],
+			[`./AppManifest.js`],
 			() => {
 			}
 		);

@@ -46,6 +46,7 @@ namespace Uno.UI.Runtime.Skia
 			SetupTheme();
 
 			ApiExtensibility.Register(typeof(Windows.UI.Core.ICoreWindowExtension), o => new GtkCoreWindowExtension(o));
+			ApiExtensibility.Register<Windows.UI.Xaml.Application>(typeof(Uno.UI.Xaml.IApplicationExtension), o => new GtkApplicationExtension(o));
 			ApiExtensibility.Register(typeof(Windows.UI.ViewManagement.IApplicationViewExtension), o => new GtkApplicationViewExtension(o));
 			ApiExtensibility.Register(typeof(ISystemThemeHelperExtension), o => new GtkSystemThemeHelperExtension(o));
 			ApiExtensibility.Register(typeof(Windows.Graphics.Display.IDisplayInformationExtension), o => _displayInformationExtension ??= new GtkDisplayInformationExtension(o, _window));
@@ -110,6 +111,8 @@ namespace Uno.UI.Runtime.Skia
 				WUX.Window.Current.OnNativeSizeChanged(new Windows.Foundation.Size(e.Allocation.Width, e.Allocation.Height));
 			};
 
+			_window.WindowStateEvent += OnWindowStateChanged;
+
 			var overlay = new Overlay();
 
 			_eventBox = new EventBox();
@@ -138,6 +141,49 @@ namespace Uno.UI.Runtime.Skia
 			Gtk.Application.Run();
 		}
 
+		private void OnWindowStateChanged(object o, WindowStateEventArgs args)
+		{
+			var winUIApplication = WUX.Application.Current;
+			var winUIWindow = WUX.Window.Current;
+			var newState = args.Event.NewWindowState;
+			var changedState = args.Event.ChangedMask;			
+
+			var isVisible =
+				!(newState.HasFlag(Gdk.WindowState.Withdrawn) ||
+				newState.HasFlag(Gdk.WindowState.Iconified));
+
+			var isVisibleChanged =
+				changedState.HasFlag(Gdk.WindowState.Withdrawn) ||
+				changedState.HasFlag(Gdk.WindowState.Iconified);
+
+			var focused = newState.HasFlag(Gdk.WindowState.Focused);
+			var focusChanged = changedState.HasFlag(Gdk.WindowState.Focused);
+
+			if (!focused && focusChanged)
+			{
+				winUIWindow?.OnActivated(Windows.UI.Core.CoreWindowActivationState.Deactivated);
+			}
+
+			if (isVisibleChanged)
+			{
+				if (isVisible)
+				{
+					winUIApplication?.OnLeavingBackground();
+					winUIWindow?.OnVisibilityChanged(true);
+				}
+				else
+				{
+					winUIWindow?.OnVisibilityChanged(false);
+					winUIApplication?.OnEnteredBackground();
+				}
+			}
+
+			if (focused && focusChanged)
+			{
+				winUIWindow?.OnActivated(Windows.UI.Core.CoreWindowActivationState.CodeActivated);
+			}
+		}
+
 		private void UpdateWindowPropertiesFromPackage()
 		{
 			if (Windows.ApplicationModel.Package.Current.Logo is Uri uri)
@@ -147,9 +193,9 @@ namespace Uno.UI.Runtime.Skia
 
 				if (File.Exists(iconPath))
 				{
-					if (this.Log().IsEnabled(Microsoft.Extensions.Logging.LogLevel.Warning))
+					if (this.Log().IsEnabled(Microsoft.Extensions.Logging.LogLevel.Information))
 					{
-						this.Log().Warn($"Loading icon file [{iconPath}] from Package.appxmanifest file");
+						this.Log().Info($"Loading icon file [{iconPath}] from Package.appxmanifest file");
 					}
 
 					GtkHost.Window.SetIconFromFile(iconPath);

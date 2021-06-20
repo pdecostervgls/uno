@@ -119,7 +119,9 @@ namespace Windows.UI.Xaml.Controls
 			date = pItem.DateBase;
 
 			// after display mode changed, we'll focus a new item, we want that item to be focused by the specified state.
+#if false // Fix for Uno - not supported feature
 			m_focusItemAfterDisplayModeChanged = true;
+#endif
 			m_focusStateAfterDisplayModeChanged = focusState;
 
 			if (displayMode == CalendarViewDisplayMode.Year && m_tpMonthViewItemHost.Panel is {})
@@ -386,7 +388,7 @@ namespace Windows.UI.Xaml.Controls
 
 			found = m_tpSelectedDates.IndexOf(date, out index);
 
-			pIsSelected = !!found;
+			pIsSelected = found;
 
 		}
 

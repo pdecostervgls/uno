@@ -14,6 +14,7 @@ using Uno.Extensions;
 using Uno.Extensions.Specialized;
 using Uno.Logging;
 using Uno.UI;
+using Uno.UI.Extensions;
 
 namespace Windows.UI.Xaml.Controls.Primitives
 {
@@ -48,7 +49,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
 				set
 				{
 					_host = value;
-					_entries.Clear();
+					Clear();
 				}
 			}
 
@@ -71,6 +72,17 @@ namespace Windows.UI.Xaml.Controls.Primitives
 				After
 			}
 
+			internal void Clear()
+			{
+				_entries.Clear();
+				FirstIndex = -1;
+				LastIndex = int.MinValue;
+
+				_generationStartIndex = -1;
+				_generationCurrentIndex = -1;
+				_generationEndIndex = -1;
+			}
+
 			internal void BeginGeneration(int startIndex, int endIndex)
 			{
 				if (_host is null)
@@ -86,7 +98,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
 				_generationEndIndex = endIndex;
 				_generationState = GenerationState.Before;
 
-				// Note: Start and End indexes are INCLUSIVE
+				// Note: Fist and Last indexes are INCLUSIVE
 				startIndex = Math.Max(FirstIndex, startIndex);
 				endIndex = Math.Min(LastIndex, endIndex);
 
@@ -381,14 +393,43 @@ namespace Windows.UI.Xaml.Controls.Primitives
 
 		internal void ScrollItemIntoView(int index, ScrollIntoViewAlignment alignment, double offset, bool forceSynchronous)
 		{
-			if (_layoutStrategy is null)
+			if (_layoutStrategy is null || Owner is null)
 			{
 				return;
 			}
 
+			if (!m_isBiggestItemSizeDetermined)
+			{
+				// On Android we might not have been measured before requesting a ScrollInto (Picker),
+				// so the itemSize will be the default 1x1 which would drive to invalid scroll offsets.
+				// In that case we forcefully DetermineTheBiggestItemSize and ForceConfigViewport to make sure that
+				// the bounds provided by the EstimateElementBounds are valid.
+
+				var pseudoAvailableSize = GetLayoutViewport().Size;
+
+				// The code below replicates what's done by the MeasureOverride
+				DetermineTheBiggestItemSize(Owner, pseudoAvailableSize, out var biggestItemSize);
+				if (biggestItemSize != m_biggestItemSize)
+				{
+					m_biggestItemSize = biggestItemSize;
+
+					// for primary panel, we should notify the CalendarView, so CalendarView can update
+					// the size for other template parts.
+					if (m_type == CalendarPanelType.Primary)
+					{
+						SetItemMinimumSize(biggestItemSize);
+						Owner.OnPrimaryPanelDesiredSizeChanged();
+					}
+				}
+				m_isBiggestItemSizeDetermined = true;
+
+				// Then we make sure to configure Cols and Rows
+				ForceConfigViewport(pseudoAvailableSize);
+			}
+
 			_layoutStrategy.EstimateElementBounds(ElementType.ItemContainer, index, default, default, default, out var bounds);
 
-			if (Owner?.ScrollViewer is { } sv)
+			if (Owner.ScrollViewer is { } sv)
 			{
 				var newOffset = bounds.Y + offset;
 				var currentOffset = sv.VerticalOffset;
@@ -476,11 +517,11 @@ namespace Windows.UI.Xaml.Controls.Primitives
 			var viewport = new Rect(
 				_effectiveViewport.Location.FiniteOrDefault(default),
 				_effectiveViewport.Size.AtLeast(availableSize).AtLeast(_defaultHardCodedSize).FiniteOrDefault(_defaultHardCodedSize));
-			if (calendar.HorizontalAlignment != HorizontalAlignment.Stretch)
+			if (calendar.HorizontalAlignment != HorizontalAlignment.Stretch && double.IsNaN(calendar.Width) && calendar.MinWidth <= 0)
 			{
 				viewport.Width = _defaultHardCodedSize.Width;
 			}
-			if (calendar.VerticalAlignment != VerticalAlignment.Stretch)
+			if (calendar.VerticalAlignment != VerticalAlignment.Stretch && double.IsNaN(calendar.Height) && calendar.MinHeight <= 0)
 			{
 				viewport.Height = _defaultHardCodedSize.Height;
 			}
@@ -509,7 +550,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
 #else
 			ShouldInterceptInvalidate = true;
 #endif
-			var index = -1;
+			int index = -1, startIndex = 0, firstVisibleIndex = -1, lastVisibleIndex = -1;
 			var bottom = 0.0;
 			try
 			{
@@ -524,7 +565,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
 				}
 
 				// Gets the index of the first element to render and the actual viewport to use
-				_layoutStrategy.EstimateElementIndex(ElementType.ItemContainer, default, default, viewport, out var renderWindow, out var startIndex);
+				_layoutStrategy.EstimateElementIndex(ElementType.ItemContainer, default, default, viewport, out var renderWindow, out startIndex);
 				renderWindow.Size = requestedRenderingWindow.Size; // The renderWindow contains only position information
 				startIndex = Math.Max(0, startIndex - StartIndex);
 
@@ -533,7 +574,6 @@ namespace Windows.UI.Xaml.Controls.Primitives
 				_cache.BeginGeneration(startIndex, startIndex + expectedItemsCount);
 
 				index = startIndex;
-				int firstVisibleIndex = -1, lastVisibleIndex = -1;
 				var count = _host.Count;
 				var layout = new LayoutReference { RelativeLocation = ReferenceIdentity.Myself };
 				var currentLine = (y: double.MinValue, col: 0);
@@ -605,20 +645,31 @@ namespace Windows.UI.Xaml.Controls.Primitives
 
 					index++;
 				}
-				
-				FirstVisibleIndexBase = Math.Max(firstVisibleIndex, startIndex);
-				LastVisibleIndexBase = Math.Max(FirstVisibleIndexBase, lastVisibleIndex);
 			}
 			finally
 			{
-				foreach (var unusedEntry in _cache.CompleteGeneration(index - 1))
+				try
 				{
-					Children.Remove(unusedEntry.Container);
+					FirstVisibleIndexBase = Math.Max(firstVisibleIndex, startIndex);
+					LastVisibleIndexBase = Math.Max(FirstVisibleIndexBase, lastVisibleIndex);
+
+					foreach (var unusedEntry in _cache.CompleteGeneration(index - 1))
+					{
+						Children.Remove(unusedEntry.Container);
+					}
+
+					global::System.Diagnostics.Debug.Assert(_cache.FirstIndex <= FirstVisibleIndex || FirstVisibleIndex == -1);
+					global::System.Diagnostics.Debug.Assert(_cache.LastIndex >= LastVisibleIndex || LastVisibleIndex == -1);
+					global::System.Diagnostics.Debug.Assert(Children.Count == _cache.LastIndex - _cache.FirstIndex + 1 || (_cache.LastIndex == -1 && _cache.LastIndex == -1));
+				}
+				catch
+				{
+					_cache.Clear();
+					Children.Clear();
+
+					InvalidateMeasure();
 				}
 
-				global::System.Diagnostics.Debug.Assert(_cache.FirstIndex <= FirstVisibleIndex || FirstVisibleIndex == -1);
-				global::System.Diagnostics.Debug.Assert(_cache.LastIndex >= LastVisibleIndex || LastVisibleIndex == -1);
-				global::System.Diagnostics.Debug.Assert(Children.Count == _cache.LastIndex - _cache.FirstIndex + 1 || (_cache.LastIndex == -1 && _cache.LastIndex == -1));
 
 				// We force the parent ScrollViewer to use the same viewport as us, no matter its own stretching.
 				ViewportHeight = viewport.Height;
@@ -713,7 +764,7 @@ namespace Windows.UI.Xaml.Controls.Primitives
 			// which is actually set **ONLY** by this SetViewport for Year and Decade host
 			// (We bypass the SetItemMinimumSize in the CalendarPanel_Partial.MeasureOverride if m_type is **not** CalendarPanelType.Primary)
 
-			if (m_type == CalendarPanelType.Secondary_SelfAdaptive && m_biggestItemSize.Width > 2 && m_biggestItemSize.Height > 2)
+			if (m_isBiggestItemSizeDetermined && m_type == CalendarPanelType.Secondary_SelfAdaptive)
 			{
 				int effectiveCols = (int)(viewportSize.Width / m_biggestItemSize.Width);
 				int effectiveRows = (int)(viewportSize.Height / m_biggestItemSize.Height);

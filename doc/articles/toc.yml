@@ -61,6 +61,8 @@
           href: guides\azure-static-webapps.md
         - name: How to integrate Uno.Material
           href: guides/uno-material-walkthrough.md
+        - name: How to integrate Uno.Cupertino
+          href: guides/uno-cupertino-walkthrough.md
     - name: Tutorials
       items:
         - name: Silverlight migration
@@ -298,12 +300,19 @@
               href: features/uno-material.md
             - name: Controls extra setup
               href: features/uno-material-controls-extra-setup.md
+        - name: Uno Cupertino
+          topicHref: features/uno-cupertino.md
+          items:
+            - name: Overview
+              href: features/uno-cupertino.md
         - name: Fluent icon font
           href: uno-fluent-assets.md
         - name: Lottie animations
           href: features/Lottie.md
         - name: Working with cookies
           href: features/working-with-cookies.md
+        - name: Using pointer cursors
+          href: features/cursors.md
     - name: Core functionality
       items:
         - name: Logging

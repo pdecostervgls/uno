@@ -163,6 +163,8 @@ namespace Windows.UI.Xaml.Controls
 			NativePanel?.InsertItems(GetIndexPathsFromStartAndCount(firstItem, count, section));
 
 			ManagedVirtualizingPanel?.GetLayouter().AddItems(firstItem, count, section);
+
+			Refresh();
 		}
 
 		private void RemoveItems(int firstItem, int count, int section)
@@ -170,6 +172,8 @@ namespace Windows.UI.Xaml.Controls
 			NativePanel?.DeleteItems(GetIndexPathsFromStartAndCount(firstItem, count, section));
 
 			ManagedVirtualizingPanel?.GetLayouter().RemoveItems(firstItem, count, section);
+
+			Refresh();
 		}
 
 		/// <summary>

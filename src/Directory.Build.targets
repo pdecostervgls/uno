@@ -57,7 +57,7 @@
 	<PackageReference Update="Microsoft.Extensions.Logging.Filter" Version="1.1.2" />
 	<PackageReference Update="Uno.Extensions.Logging.WebAssembly.Console" Version="1.1.0" />
 	<PackageReference Update="Uno.Extensions.Logging.WebAssembly.OSLog" Version="1.0.0-dev.3" />
-	<PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" />
+	<PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'MonoAndroid11.0'">
